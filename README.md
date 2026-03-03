@@ -375,11 +375,4 @@ Open-source lab project for educational purposes.
 
 ---
 
-If you'd like next:
 
-* 📊 Visual PNG architecture diagram
-* 🧩 Terraform infra version
-* 🔁 CI/CD integration with Jenkins
-* 📘 Interview question guide
-
-Let me know 🚀
