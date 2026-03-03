@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: DaemonSet
+
+metadata:
+  name: jenkins-daemonset
+  labels:
+    app: jenkins
+
+spec:
+  selector:
+    matchLabels:
+      app: jenkins
+
+  template:
+    metadata:
+      labels:
+        app: jenkins
+
+    spec:
+      containers:
+      - name: jenkins
+        image: jenkins/jenkins:lts
+        ports:
+        - containerPort: 8080
