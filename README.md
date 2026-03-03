@@ -11,7 +11,7 @@ AWS EBS dynamic provisioning
 
 AWS EFS dynamic provisioning
 
-AWS Cloud Controller Manager configuration
+AWS Cloud Controller Manager configuration 
 
 Services (ClusterIP / LoadBalancer)
 
