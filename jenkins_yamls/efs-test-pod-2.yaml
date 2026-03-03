@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: efs-test-pod-2
+spec:
+  containers:
+  - name: app
+    image: nginx
+    volumeMounts:
+    - name: efs-vol
+      mountPath: /usr/share/nginx/html
+  volumes:
+  - name: efs-vol
+    persistentVolumeClaim:
+      claimName: efs-test-pvc
+  nodeSelector:
+    kubernetes.io/hostname: ip-172-31-6-213
