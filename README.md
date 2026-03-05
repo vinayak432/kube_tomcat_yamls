@@ -120,10 +120,10 @@ k8s_yamls/
 │   └── jen-test-pod-antiaffy.yaml
 │
 ├── static-ebs/
-│   └── ebs-static.yaml
+│   └── ebs-static.yaml               # all in one [pv,pvc,pod]
 │
 ├── static-efs/
-│   └── efs-static.yaml
+│   └── efs-static.yaml               # all in one [pv,pvc,pod]
 │
 └── aws-ccm-values.yaml               # AWS Cloud Controller Manager
 ```
