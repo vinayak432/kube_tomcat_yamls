@@ -1,3 +1,339 @@
+🚀 Kubernetes DevOps Lab – Jenkins, Storage, Scheduling & Workloads
+
+📌 Overview
+
+This repository is a hands-on Kubernetes DevOps lab that demonstrates how real production workloads are deployed and managed.
+
+It includes examples for:
+
+Jenkins deployments
+
+Nginx workloads
+
+Kubernetes scheduling
+
+Persistent storage (EBS / EFS / HostPath)
+
+ConfigMaps & Secrets
+
+Private Docker registry authentication
+
+Kubernetes workload types
+
+The goal is to practice real-world Kubernetes infrastructure patterns used in DevOps environments.
+
+🧠 Concepts Covered
+Category	Topics
+Workloads	Pod, ReplicaSet, Deployment, DaemonSet
+Storage	HostPath, Static PV, Dynamic EBS, Dynamic EFS
+Configuration	ConfigMaps
+Security	Secrets
+Registry	imagePullSecrets
+Networking	Services
+Scheduling	NodeSelector, NodeAffinity, PodAffinity, PodAntiAffinity
+Cloud	AWS Storage Drivers
+📂 Repository Structure
+k8s/
+│
+├── config_secrets/
+│   ├── tomcat-config/
+│   ├── config-fgpod.yaml
+│   ├── config_deployment_pod.yaml
+│   ├── config_map.yaml
+│   ├── economic-app-deploy.yaml
+│   └── secret-pod-registry.yaml
+│
+├── dynamic-ebs/
+│   ├── ebs-sc.yaml
+│   ├── ebs-test-pod.yaml
+│   └── ebs-test-pvc.yaml
+│
+├── dynamic-efs/
+│   ├── efs-sc.yaml
+│   ├── efs-test-pod.yaml
+│   ├── efs-test-pod-2.yaml
+│   ├── efs-test-pvc.yaml
+│   ├── jen-sc-pvc-test-pod.yaml
+│   ├── jen-test-pod-antiaffy.yaml
+│   └── jenkins-efs-test.yaml
+│
+├── hostpath/
+│   ├── jen_host.yaml
+│   ├── pv.yaml
+│   ├── pvc.yaml
+│   └── pvc_mnt.yaml
+│
+├── static-ebs/
+│   └── ebs-static.yaml
+│
+├── static-efs/
+│   └── efs-static.yaml
+│
+├── nginx/
+│   ├── nginx-daemonset.yaml
+│   ├── nginx-deployment.yaml
+│   ├── nginx-rs.yaml
+│   ├── nginx-pod.yaml
+│   ├── nginx-service_lb.yaml
+│   ├── nginx_backend.yaml
+│   ├── nginx_deploy_nodeaff.yaml
+│   ├── nginx_deploy_podantiaff.yaml
+│   ├── nginx_deploy_podaff.yaml
+│   └── nginx_deploy_nodeselector.yaml
+│
+├── tomcat/
+│   ├── tomcat-daemonset.yaml
+│   ├── tomcat-deployment.yaml
+│   ├── tomcat-pod.yaml
+│   └── tomcat-service_lb.yaml
+│
+├── jenkins-pod.yaml
+├── jenkins-deployment.yaml
+├── jenkins-daemonset.yaml
+├── jenkins-service.yaml
+├── aws-ccm-values.yaml
+└── README.md
+🧱 Kubernetes Workload Examples
+
+This repo includes examples for all major Kubernetes workloads.
+
+Workload	Example
+Pod	jenkins-pod.yaml
+ReplicaSet	nginx-rs.yaml
+Deployment	nginx-deployment.yaml
+DaemonSet	jenkins-daemonset.yaml
+Service	nginx-service_lb.yaml
+Kubernetes Workload Flow
+Deployment
+   ↓
+ReplicaSet
+   ↓
+Pod
+   ↓
+Container
+💾 Storage Labs
+
+This repository demonstrates multiple Kubernetes storage strategies.
+
+🖥 HostPath Storage
+
+Location:
+
+hostpath/
+
+Example files:
+
+jen_host.yaml
+pv.yaml
+pvc.yaml
+pvc_mnt.yaml
+
+HostPath mounts a node filesystem directly inside a pod.
+
+Worker Node Disk
+      ↓
+HostPath
+      ↓
+PersistentVolume
+      ↓
+Pod
+
+⚠ Recommended only for development environments.
+
+💾 Dynamic AWS EBS
+
+Location:
+
+dynamic-ebs/
+
+Files:
+
+ebs-sc.yaml
+ebs-test-pvc.yaml
+ebs-test-pod.yaml
+
+EBS provides block storage for single pod access.
+
+Workflow:
+
+StorageClass
+     ↓
+PVC
+     ↓
+EBS CSI Driver
+     ↓
+AWS EBS Volume
+     ↓
+Pod Mounts Volume
+
+Access Mode:
+
+ReadWriteOnce
+📂 Dynamic AWS EFS
+
+Location:
+
+dynamic-efs/
+
+Files:
+
+efs-sc.yaml
+efs-test-pvc.yaml
+efs-test-pod.yaml
+efs-test-pod-2.yaml
+jenkins-efs-test.yaml
+
+EFS provides shared storage across multiple pods.
+
+Workflow:
+
+Pod A
+   ↓
+PVC
+   ↓
+EFS CSI Driver
+   ↓
+AWS EFS
+   ↑
+Pod B
+
+Access Mode:
+
+ReadWriteMany
+⚙ ConfigMaps
+
+Location:
+
+config_secrets/
+
+Files:
+
+config_map.yaml
+config_deployment_pod.yaml
+config-fgpod.yaml
+
+ConfigMaps allow externalizing configuration from container images.
+
+Example flow:
+
+ConfigMap
+   ↓
+Environment Variables
+   ↓
+Pod / Deployment
+🔐 Kubernetes Secrets
+
+File:
+
+secret-pod-registry.yaml
+
+Secrets store sensitive data such as:
+
+Docker registry credentials
+
+passwords
+
+tokens
+
+certificates
+
+Check secrets:
+
+kubectl get secrets
+📦 Private Docker Registry
+
+Create registry secret:
+
+kubectl create secret docker-registry regcred \
+--docker-server=https://index.docker.io/v1/ \
+--docker-username=<username> \
+--docker-password=<password> \
+--docker-email=<email>
+
+Pod example:
+
+imagePullSecrets:
+- name: regcred
+🌐 Kubernetes Scheduling Examples
+
+Located inside:
+
+nginx/
+
+Concepts demonstrated:
+
+Feature	Purpose
+NodeSelector	Schedule pod to specific node
+NodeAffinity	Advanced node scheduling
+PodAffinity	Place pods together
+PodAntiAffinity	Spread pods across nodes
+🚀 Running the Lab
+Check cluster
+kubectl get nodes
+kubectl get pods -A
+Deploy Jenkins
+kubectl apply -f jenkins-deployment.yaml
+kubectl apply -f jenkins-service.yaml
+Deploy Nginx Example
+kubectl apply -f nginx/nginx-deployment.yaml
+Check pods
+kubectl get pods
+Check storage
+kubectl get pv
+kubectl get pvc
+⚠ Common Issues
+PVC Pending
+
+Possible causes:
+
+missing CSI driver
+
+wrong StorageClass
+
+missing AWS IAM permissions
+
+CrashLoopBackOff
+
+Possible causes:
+
+incorrect mount path
+
+permission issues
+
+Cannot Access Service
+
+Possible causes:
+
+wrong service type
+
+NodePort blocked in security group
+
+🎯 Learning Goals
+
+This repository helps understand:
+
+✔ Kubernetes workloads
+✔ Storage provisioning
+✔ AWS EBS & EFS integration
+✔ ConfigMaps and Secrets
+✔ Container registry authentication
+✔ Pod scheduling strategies
+
+👨‍💻 Author
+
+Vinayak
+
+DevOps | Kubernetes | AWS
+
+GitHub
+https://github.com/vinayak432
+
+
+=====================================================
+====================================================
+========================================================
+
+
 # 🚀 Kubernetes on AWS – Complete Workload & Storage Lab
 
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-1.33-blue?logo=kubernetes)
