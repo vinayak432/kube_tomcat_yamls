@@ -374,5 +374,150 @@ After completing this lab, you will understand:
 Open-source lab project for educational purposes.
 
 ---
+====================================================================================================================================
 
+# ☸️ k8s_yamls
+
+> *"You don't learn Kubernetes by reading about it. You learn it by breaking things — and this repo is where that journey begins."*
+
+A hands-on collection of **Kubernetes YAML manifests** built for learning, experimenting, and truly understanding how K8s works under the hood. Apply it, break it, fix it, repeat. 🔁
+
+---
+
+## 🎯 What This Repo Is About
+
+This is a **learning-first** Kubernetes reference repo. Every manifest here is designed to be readable, hackable, and educational. No black-box helm charts — just raw, honest YAML so you can see exactly what's happening.
+
+---
+
+## 📦 Resources Covered
+
+| Resource | What You'll Learn |
+|----------|-----------------|
+| 🚀 **Deployments** | Rolling updates, replica scaling, pod templates, and self-healing workloads |
+| 🌐 **Services** | ClusterIP, NodePort — how pods discover and talk to each other |
+| 📋 **ConfigMaps & Secrets** | Decoupling config from code; managing sensitive data with base64 encoding |
+| 💾 **StatefulSets & PersistentVolumes** | Stateful apps, stable pod identity, and durable storage with PVCs |
+
+---
+
+## 🚀 Getting Started
+
+**Prerequisites:**
+- A local cluster: [`minikube`](https://minikube.sigs.k8s.io) or [`kind`](https://kind.sigs.k8s.io)
+- `kubectl` installed and configured
+
+```bash
+# Clone the repo
+git clone https://github.com/vinayak432/k8s_yamls.git
+cd k8s_yamls
+
+# ✅ Always dry-run first — good habit!
+kubectl apply -f <manifest>.yaml --dry-run=client
+
+# 🚀 Apply a manifest
+kubectl apply -f <manifest>.yaml
+
+# 👀 Watch your pods come alive
+kubectl get pods -w
+```
+
+---
+
+## 📂 Suggested Structure
+
+```
+k8s_yamls/
+├── deployments/          # Stateless workload definitions
+├── services/             # ClusterIP & NodePort configs
+├── configmaps/           # App configuration as key-value data
+├── secrets/              # Sensitive config (base64 encoded)
+└── statefulsets/         # Stateful apps + PVC definitions
+```
+
+---
+
+## 🧪 Learning Experiments to Try
+
+Level up by experimenting with these after applying the manifests:
+
+```bash
+# 🔁 Scale a Deployment up and down
+kubectl scale deployment <name> --replicas=5
+
+# 💥 Kill a pod and watch K8s self-heal
+kubectl delete pod <pod-name>
+
+# 🔍 Inspect a ConfigMap value
+kubectl get configmap <name> -o yaml
+
+# 🔐 Decode a Secret
+kubectl get secret <name> -o jsonpath='{.data.<key>}' | base64 --decode
+
+# 📦 Exec into a running pod
+kubectl exec -it <pod-name> -- /bin/sh
+
+# 📜 Check rollout history
+kubectl rollout history deployment/<name>
+```
+
+---
+
+## 🧠 Key Concepts Demystified
+
+**Why ConfigMaps & Secrets?**
+> Keep your container images environment-agnostic. The same image should work in dev, staging, and prod — only the config changes.
+
+**Why StatefulSets over Deployments for databases?**
+> Pods in a StatefulSet get stable, predictable names (`pod-0`, `pod-1`) and their own PersistentVolumeClaims. Deployments treat pods as disposable cattle; StatefulSets treat them as named pets.
+
+**Services vs. direct Pod IPs?**
+> Pod IPs are ephemeral — they change on restart. Services provide a stable virtual IP and DNS name that always routes to healthy pods.
+
+---
+
+## 🛠️ Recommended Tools for Learning
+
+| Tool | Why You Need It |
+|------|----------------|
+| [`minikube`](https://minikube.sigs.k8s.io) | Run a full K8s cluster locally |
+| [`k9s`](https://k9scli.io) | Beautiful terminal UI — like `htop` for Kubernetes |
+| [`kubectx`](https://github.com/ahmetb/kubectx) | Switch between clusters/namespaces instantly |
+| [`lens`](https://k8slens.dev) | GUI IDE for Kubernetes exploration |
+
+---
+
+## 📖 Go Deeper
+
+- 📚 [Kubernetes Official Docs](https://kubernetes.io/docs/home/)
+- 🎮 [Killercoda K8s Labs](https://killercoda.com/playgrounds/scenario/kubernetes) — free browser-based K8s playground
+- 🧗 [Kubernetes the Hard Way](https://github.com/kelseyhightower/kubernetes-the-hard-way) — build K8s from scratch
+- 🃏 [CKAD Practice Questions](https://github.com/dgkanatsios/CKAD-exercises) — prep for the K8s developer exam
+
+---
+
+## 🤝 Contributing
+
+Learning is better together! If you've built a useful manifest or found a bug:
+
+1. Fork → Branch → Commit → PR
+2. Add comments inside your YAMLs explaining *why*, not just *what*
+
+---
+
+## 👤 Author
+
+**Vinayak** — on a journey from `kubectl get pods` to `kubectl know-everything`
+
+[![GitHub](https://img.shields.io/badge/GitHub-vinayak432-181717?logo=github)](https://github.com/vinayak432)
+
+---
+
+<div align="center">
+
+*One `kubectl apply` at a time. You've got this.* 💪
+
+⭐ Found this helpful? Star the repo and share it with fellow K8s learners!
+
+</div>
 
