@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: economic-app-deploy
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: economic-app
+
+  template:
+    metadata:
+      labels:
+        app: economic-app
+
+    spec:
+      containers:
+      - name: app
+        image: vinayak432/economic-times-app:5
+        ports:
+        - containerPort: 80
+
+      imagePullSecrets:
+      - name: dockerhub-secret
