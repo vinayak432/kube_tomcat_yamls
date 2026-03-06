@@ -13,7 +13,7 @@
 > *"Real Kubernetes skills aren't built in playgrounds — they're forged on actual cloud infrastructure."*
 
 **A battle-ready, real-world Kubernetes lab running on AWS EC2 with kubeadm.**  
-Jenkins. Nginx. Tomcat. EBS. EFS. Scheduling. The full DevOps stack — in raw YAML.
+Jenkins. Nginx. Tomcat. EBS. EFS. StatefulSets. PostgreSQL. Resource Management. The full DevOps stack — in raw YAML.
 
 [🚀 Quick Start](#-quick-start) • [📂 Structure](#-repository-structure) • [💾 Storage Labs](#-storage-labs) • [🎯 Scheduling](#-scheduling-strategies) • [🧪 Lab Guide](#-step-by-step-lab-guide)
 
@@ -27,13 +27,14 @@ This isn't a toy cluster. This repo simulates **production-grade Kubernetes patt
 
 | 🧩 Category | What You'll Practice |
 |------------|----------------------|
-| 🚀 **Workloads** | Pod → ReplicaSet → Deployment → DaemonSet |
+| 🚀 **Workloads** | Pod → ReplicaSet → Deployment → DaemonSet → StatefulSet |
 | 💾 **Storage** | HostPath, Static PV, Dynamic EBS (RWO), Dynamic EFS (RWX) |
-| 🔧 **Configuration** | ConfigMaps, Secrets, imagePullSecrets |
+| 🔧 **Configuration** | ConfigMaps, Secrets, imagePullSecrets, PostgreSQL Secrets |
 | 🌐 **Networking** | ClusterIP, NodePort, AWS LoadBalancer |
 | 🎯 **Scheduling** | NodeSelector, NodeAffinity (hard/soft), PodAffinity, PodAntiAffinity, Tolerations |
+| 📊 **Resource Management** | ResourceQuota, LimitRange, Guaranteed QoS pods |
 | ☁️ **AWS Integration** | EBS CSI Driver, EFS CSI Driver, AWS CCM |
-| 🧑‍💻 **Apps** | Jenkins, Nginx, Tomcat |
+| 🧑‍💻 **Apps** | Jenkins, Nginx, Tomcat, PostgreSQL |
 
 ---
 
@@ -46,22 +47,22 @@ This isn't a toy cluster. This repo simulates **production-grade Kubernetes patt
                         │   ┌──────────────────────────────┐   │
                         │   │            VPC               │   │
                         │   │                              │   │
-                        │   │  ┌─────────────┐  ┌───────────────────┐  │
-                        │   │  │Control Plane│  │  Worker Nodes     │  │
-                        │   │  │  kubeadm    │  │  EC2 Instances    │  │
-                        │   │  │  API Server │  │  kubelet          │  │
-                        │   │  │  Scheduler  │  │  containerd       │  │
-                        │   │  │  etcd       │  │  Calico CNI       │  │
-                        │   │  └─────────────┘  └───────────────────┘  │
-                        │   │                          │           │
-                        │   │           ┌──────────────┼──────┐    │
-                        │   │           │              │      │    │
+                        │   │  ┌─────────────┐  ┌──────────────────┐  │
+                        │   │  │Control Plane│  │  Worker Nodes    │  │
+                        │   │  │  kubeadm    │  │  EC2 Instances   │  │
+                        │   │  │  API Server │  │  kubelet         │  │
+                        │   │  │  Scheduler  │  │  containerd      │  │
+                        │   │  │  etcd       │  │  Calico CNI      │  │
+                        │   │  └─────────────┘  └──────────────────┘  │
+                        │   │                          │          │
+                        │   │           ┌──────────────┼──────┐   │
+                        │   │           │              │      │   │
                         │   │       HostPath        EBS CSI  EFS CSI
-                        │   │      (local dev)      (RWO)    (RWX)│
+                        │   │      (local dev)      (RWO)    (RWX) │
                         │   └──────────────────────────────────┘   │
                         └──────────────────────────────────────────┘
                                              │
-                              Jenkins | Nginx | Tomcat
+                              Jenkins | Nginx | Tomcat | PostgreSQL
 ```
 
 ---
@@ -71,13 +72,13 @@ This isn't a toy cluster. This repo simulates **production-grade Kubernetes patt
 ```
 k8s_yamls/
 │
-├── 🧑‍💻 Jenkins Workloads
+├── 🧑‍💻 jenkins/                        # Jenkins workload examples
 │   ├── jenkins-pod.yaml               # Bare pod (learn the basics)
 │   ├── jenkins-deployment.yaml        # Production-style deployment
 │   ├── jenkins-daemonset.yaml         # Run on every node
-│   └── jenkins-service.yaml          # Expose via LoadBalancer
+│   └── jenkins-service.yaml           # Expose via LoadBalancer
 │
-├── 🌐 nginx/                         # Rich scheduling examples
+├── 🌐 nginx/                          # Rich scheduling examples
 │   ├── nginx-pod.yaml
 │   ├── nginx-rs.yaml
 │   ├── nginx-deployment.yaml
@@ -94,46 +95,54 @@ k8s_yamls/
 │   ├── tomcat-daemonset.yaml
 │   └── tomcat-service_lb.yaml
 │
-├── 🔧 config_secrets/
-│   ├── config_map.yaml
-│   ├── config_deployment_pod.yaml
-│   ├── economic-app-deploy.yaml
-│   └── secret-pod-registry.yaml
-│
-├── 🖥️ hostpath/                      # Local storage (dev only)
-│   ├── pv.yaml
-│   ├── pvc.yaml
-│   ├── pvc_mnt.yaml
-│   └── jen_host.yaml
-│
-├── 💿 dynamic-ebs/                   # AWS Block Storage (RWO)
-│   ├── ebs-sc.yaml
-│   ├── ebs-test-pvc.yaml
-│   └── ebs-test-pod.yaml
-│
-├── 📂 dynamic-efs/                   # AWS Shared Storage (RWX)
-│   ├── efs-sc.yaml
-│   ├── efs-test-pvc.yaml
-│   ├── efs-test-pod.yaml
-│   ├── efs-test-pod-2.yaml           # Two pods sharing same volume!
-│   ├── jenkins-efs-test.yaml
-│   └── jen-test-pod-antiaffy.yaml
-│
-├── static-ebs/
-│   └── ebs-static.yaml               # all in one [pv,pvc,pod]
-│
-├── static-efs/
-│   └── efs-static.yaml               # all in one [pv,pvc,pod]
-│
-└── aws-ccm-values.yaml               # AWS Cloud Controller Manager
+└── 📦 volumes/                        # All storage & config resources
+    │
+    ├── 🔧 config_secrets/             # ConfigMaps & general secrets
+    │   ├── config_map.yaml
+    │   ├── config_deployment_pod.yaml
+    │   ├── economic-app-deploy.yaml
+    │   └── secret-pod-registry.yaml
+    │
+    ├── 🔐 secrets/postgres-secret/    # PostgreSQL secret patterns ⭐ NEW
+    │   ├── postgres-secret-env-pod.yaml    # Inject secret as env vars
+    │   ├── postgres-secret-vol-pod.yaml    # Mount secret as volume
+    │   ├── statefulset.yaml               # PostgreSQL StatefulSet
+    │   ├── guaranteed-pod.yaml            # Guaranteed QoS class pod
+    │   ├── limitrange.yaml               # Namespace-level default limits
+    │   ├── resourcequota.yaml            # Namespace resource cap
+    │   └── nginx-dev-pod.yaml            # Dev pod with resource limits
+    │
+    ├── 🖥️ hostpath/                   # Local storage (dev only)
+    │   ├── pv.yaml
+    │   ├── pvc.yaml
+    │   ├── pvc_mnt.yaml
+    │   └── jen_host.yaml
+    │
+    ├── 💿 dynamic-ebs/                # AWS Block Storage (RWO)
+    │   ├── ebs-sc.yaml
+    │   ├── ebs-test-pvc.yaml
+    │   └── ebs-test-pod.yaml
+    │
+    ├── 📂 dynamic-efs/                # AWS Shared Storage (RWX)
+    │   ├── efs-sc.yaml
+    │   ├── efs-test-pvc.yaml
+    │   ├── efs-test-pod.yaml
+    │   ├── efs-test-pod-2.yaml        # Two pods sharing same volume!
+    │   ├── jenkins-efs-test.yaml
+    │   └── jen-test-pod-antiaffy.yaml
+    │
+    ├── 💿 static_ebs/
+    │   └── ebs-static.yaml            # All-in-one [PV + PVC + Pod]
+    │
+    └── 📂 static_efs/
+        └── efs-static.yaml            # All-in-one [PV + PVC + Pod]
 ```
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
+**Prerequisites:**
 - AWS account with EC2 instances
 - `kubectl` configured against your cluster
 - AWS EBS & EFS CSI drivers installed (see [Phase 2](#-phase-2--install-aws-csi-drivers))
@@ -148,8 +157,8 @@ kubectl get nodes
 kubectl get pods -n kube-system
 
 # Deploy Jenkins (the classic starting point)
-kubectl apply -f jenkins-deployment.yaml
-kubectl apply -f jenkins-service.yaml
+kubectl apply -f jenkins/jenkins-deployment.yaml
+kubectl apply -f jenkins/jenkins-service.yaml
 
 # Watch it come alive
 kubectl get pods -w
@@ -178,11 +187,10 @@ Dev ◄────────────────────────�
 ### 🖥️ HostPath — Local Dev Storage
 
 ```bash
-kubectl apply -f hostpath/pv.yaml
-kubectl apply -f hostpath/pvc.yaml
-kubectl apply -f hostpath/pvc_mnt.yaml
+kubectl apply -f volumes/hostpath/pv.yaml
+kubectl apply -f volumes/hostpath/pvc.yaml
+kubectl apply -f volumes/hostpath/pvc_mnt.yaml
 ```
-
 > ⚠️ **Dev only.** Data lives on the node — if the pod moves, data stays behind.
 
 ---
@@ -192,9 +200,9 @@ kubectl apply -f hostpath/pvc_mnt.yaml
 Best for: databases, single-writer workloads
 
 ```bash
-kubectl apply -f dynamic-ebs/ebs-sc.yaml       # Create StorageClass
-kubectl apply -f dynamic-ebs/ebs-test-pvc.yaml  # Request storage
-kubectl apply -f dynamic-ebs/ebs-test-pod.yaml  # Mount and test
+kubectl apply -f volumes/dynamic-ebs/ebs-sc.yaml       # Create StorageClass
+kubectl apply -f volumes/dynamic-ebs/ebs-test-pvc.yaml  # Request storage
+kubectl apply -f volumes/dynamic-ebs/ebs-test-pod.yaml  # Mount and test
 ```
 
 ```
@@ -210,10 +218,10 @@ StorageClass → PVC → EBS CSI Driver → AWS EBS Volume → Pod
 Best for: Jenkins workspaces, shared config, multi-pod writes
 
 ```bash
-kubectl apply -f dynamic-efs/efs-sc.yaml
-kubectl apply -f dynamic-efs/efs-test-pvc.yaml
-kubectl apply -f dynamic-efs/efs-test-pod.yaml
-kubectl apply -f dynamic-efs/efs-test-pod-2.yaml  # Second pod, same volume!
+kubectl apply -f volumes/dynamic-efs/efs-sc.yaml
+kubectl apply -f volumes/dynamic-efs/efs-test-pvc.yaml
+kubectl apply -f volumes/dynamic-efs/efs-test-pod.yaml
+kubectl apply -f volumes/dynamic-efs/efs-test-pod-2.yaml  # Second pod, same volume!
 ```
 
 ```
@@ -221,7 +229,6 @@ Pod A ──┐
         ├──► PVC ──► EFS CSI ──► AWS EFS Filesystem
 Pod B ──┘
 ```
-
 > ✅ Both pods read/write the **same** EFS filesystem simultaneously. Try it!
 
 ---
@@ -232,19 +239,125 @@ Pod B ──┘
 |---------|-----|-----|
 | Access Mode | `ReadWriteOnce` | `ReadWriteMany` |
 | Storage Type | Block | File (NFS) |
-| Multi-Pod? | ❌ One pod only | ✅ Many pods |
+| Multi-Pod? | ❌ One node only | ✅ Many pods |
+| Multi-AZ | ❌ AZ-bound | ✅ Spans AZs |
 | Use Case | Databases | Jenkins, shared files |
-| AWS Service | EC2 EBS | Managed NFS |
+| CSI Driver | `ebs.csi.aws.com` | `efs.csi.aws.com` |
+
+---
+
+## 🔐 Secrets & PostgreSQL Patterns
+
+The `volumes/secrets/postgres-secret/` folder demonstrates real-world secret management for databases.
+
+### Two Ways to Consume Secrets
+
+```bash
+# Method 1: Secret as Environment Variables
+kubectl apply -f volumes/secrets/postgres-secret/postgres-secret-env-pod.yaml
+
+# Method 2: Secret as Mounted Volume (file-based)
+kubectl apply -f volumes/secrets/postgres-secret/postgres-secret-vol-pod.yaml
+```
+
+| Method | How It Works | Best For |
+|--------|-------------|----------|
+| **Env Vars** | Secret key → `$POSTGRES_PASSWORD` in container | Simple apps |
+| **Volume Mount** | Secret key → file at `/etc/secrets/password` | Apps that read config files |
+
+---
+
+### 🗄️ PostgreSQL StatefulSet
+
+```bash
+kubectl apply -f volumes/secrets/postgres-secret/statefulset.yaml
+```
+
+StatefulSets give PostgreSQL pods:
+- **Stable pod names** — `postgres-0`, `postgres-1` (predictable, not random)
+- **Individual PVCs** — each pod gets its own persistent volume
+- **Ordered startup** — `postgres-0` starts before `postgres-1`
+- **Sticky identity** — pod restarts keep the same name and storage
+
+---
+
+## 📊 Resource Management
+
+The `volumes/secrets/postgres-secret/` folder also covers Kubernetes resource governance — critical for multi-team clusters.
+
+### ResourceQuota — Namespace-Level Caps
+
+Limits **total** resources consumable in a namespace:
+
+```bash
+kubectl apply -f volumes/secrets/postgres-secret/resourcequota.yaml
+kubectl describe resourcequota -n <namespace>
+```
+
+```yaml
+# Example: Team can't consume more than this in total
+spec:
+  hard:
+    pods: "10"
+    requests.cpu: "4"
+    requests.memory: "8Gi"
+    limits.cpu: "8"
+    limits.memory: "16Gi"
+```
+
+---
+
+### LimitRange — Per-Pod Default Limits
+
+Sets **default and max limits** for individual pods/containers in a namespace:
+
+```bash
+kubectl apply -f volumes/secrets/postgres-secret/limitrange.yaml
+```
+
+```yaml
+# Any pod without explicit limits gets these defaults applied
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: "500m"
+      memory: "256Mi"
+    defaultRequest:
+      cpu: "100m"
+      memory: "128Mi"
+    max:
+      cpu: "2"
+      memory: "2Gi"
+```
+
+---
+
+### Guaranteed QoS — Priority Pod
+
+```bash
+kubectl apply -f volumes/secrets/postgres-secret/guaranteed-pod.yaml
+```
+
+Kubernetes assigns **QoS classes** to pods based on resource config:
+
+| QoS Class | When | Eviction Priority |
+|-----------|------|------------------|
+| **Guaranteed** | `requests == limits` for all containers | Last to be evicted |
+| **Burstable** | `requests < limits` or partial | Middle |
+| **BestEffort** | No requests or limits set | First to be evicted |
+
+> 💡 **Guaranteed** pods get the highest scheduling priority and are last evicted under memory pressure. Always use for critical workloads like databases.
 
 ---
 
 ## 🎯 Scheduling Strategies
 
-Kubernetes scheduling is more powerful than most people realize. This repo has hands-on examples for all major strategies.
-
-### The Scheduling Toolkit
-
 ```bash
+# Label your nodes first
+kubectl label node <worker-1> disktype=ssd
+kubectl label node <worker-2> disktype=hdd
+
 # Pin a pod to a specific labeled node
 kubectl apply -f nginx/nginx_deploy_nodeselector.yaml
 
@@ -310,7 +423,6 @@ helm install aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver -n kube-sy
 # Verify CSI pods are running
 kubectl get pods -n kube-system | grep csi
 ```
-
 > ⚠️ Create your EFS Filesystem manually in AWS Console first. Copy the `fs-xxxxxxxx` ID into `efs-sc.yaml`.
 
 ---
@@ -319,34 +431,55 @@ kubectl get pods -n kube-system | grep csi
 
 ```bash
 # Test 1: Static HostPath
-kubectl apply -f hostpath/pv.yaml && kubectl apply -f hostpath/pvc.yaml
+kubectl apply -f volumes/hostpath/pv.yaml && kubectl apply -f volumes/hostpath/pvc.yaml
 kubectl get pv,pvc
 
 # Test 2: Dynamic EBS
-kubectl apply -f dynamic-ebs/ebs-sc.yaml
-kubectl apply -f dynamic-ebs/ebs-test-pvc.yaml
-kubectl apply -f dynamic-ebs/ebs-test-pod.yaml
+kubectl apply -f volumes/dynamic-ebs/ebs-sc.yaml
+kubectl apply -f volumes/dynamic-ebs/ebs-test-pvc.yaml
+kubectl apply -f volumes/dynamic-ebs/ebs-test-pod.yaml
 kubectl exec -it <ebs-pod> -- df -h   # confirm mount
 
 # Test 3: Shared EFS
-kubectl apply -f dynamic-efs/efs-sc.yaml
-kubectl apply -f dynamic-efs/efs-test-pvc.yaml
-kubectl apply -f dynamic-efs/efs-test-pod.yaml
-kubectl apply -f dynamic-efs/efs-test-pod-2.yaml
+kubectl apply -f volumes/dynamic-efs/efs-sc.yaml
+kubectl apply -f volumes/dynamic-efs/efs-test-pvc.yaml
+kubectl apply -f volumes/dynamic-efs/efs-test-pod.yaml
+kubectl apply -f volumes/dynamic-efs/efs-test-pod-2.yaml
 # Write in pod-1, read in pod-2 — the RWX magic!
 ```
 
 ---
 
-### 🏅 Phase 4 — Jenkins Deployment
+### 🏅 Phase 4 — PostgreSQL with Secrets + StatefulSet
+
+```bash
+# Apply resource governance first
+kubectl apply -f volumes/secrets/postgres-secret/limitrange.yaml
+kubectl apply -f volumes/secrets/postgres-secret/resourcequota.yaml
+
+# Deploy PostgreSQL StatefulSet
+kubectl apply -f volumes/secrets/postgres-secret/statefulset.yaml
+
+# Test both ways of consuming secrets
+kubectl apply -f volumes/secrets/postgres-secret/postgres-secret-env-pod.yaml
+kubectl apply -f volumes/secrets/postgres-secret/postgres-secret-vol-pod.yaml
+
+# Test Guaranteed QoS
+kubectl apply -f volumes/secrets/postgres-secret/guaranteed-pod.yaml
+kubectl describe pod guaranteed-pod | grep "QoS Class"
+```
+
+---
+
+### 🏅 Phase 5 — Jenkins Deployment
 
 ```bash
 # Option A: Simple deployment
-kubectl apply -f jenkins-deployment.yaml
-kubectl apply -f jenkins-service.yaml
+kubectl apply -f jenkins/jenkins-deployment.yaml
+kubectl apply -f jenkins/jenkins-service.yaml
 
 # Option B: Persistent Jenkins with EFS (survives restarts!)
-kubectl apply -f dynamic-efs/jenkins-efs-test.yaml
+kubectl apply -f volumes/dynamic-efs/jenkins-efs-test.yaml
 
 # Get the external URL
 kubectl get svc jenkins-service
@@ -355,47 +488,14 @@ kubectl get svc jenkins-service
 
 ---
 
-### 🏅 Phase 5 — Scheduling Experiments
+### 🏅 Phase 6 — Scheduling Experiments
 
 ```bash
-# Label your nodes first
-kubectl label node <worker-1> disktype=ssd
-kubectl label node <worker-2> disktype=hdd
-
-# Apply scheduling configs and observe
 kubectl apply -f nginx/nginx_deploy_nodeselector.yaml
 kubectl get pods -o wide   # All pods on ssd node?
 
 kubectl apply -f nginx/nginx_deploy_podantiaff.yaml
 kubectl get pods -o wide   # Pods spread across nodes?
-```
-
----
-
-## 🔧 ConfigMaps & Secrets
-
-### ConfigMaps — Inject Config Without Rebuilding Images
-
-```bash
-kubectl apply -f config_secrets/config_map.yaml
-kubectl apply -f config_secrets/config_deployment_pod.yaml
-kubectl describe pod <pod-name> | grep -A5 Environment
-```
-
-### Private Registry Auth
-
-```bash
-# Create pull secret
-kubectl create secret docker-registry regcred \
-  --docker-server=https://index.docker.io/v1/ \
-  --docker-username=<your-username> \
-  --docker-password=<your-password> \
-  --docker-email=<your-email>
-
-# Then reference in your pod YAML:
-# imagePullSecrets:
-# - name: regcred
-kubectl apply -f config_secrets/secret-pod-registry.yaml
 ```
 
 ---
@@ -409,8 +509,10 @@ kubectl apply -f config_secrets/secret-pod-registry.yaml
 | `PVC Pending` (EFS) | Wrong `fileSystemId` | Check `efs-sc.yaml` has correct `fs-xxxxx` |
 | `CrashLoopBackOff` | Wrong volume mount path | `kubectl logs <pod>` for details |
 | `LoadBalancer Pending` | AWS LB controller missing | Install `aws-load-balancer-controller` |
-| `Pod Unschedulable` | No nodes match affinity rules | Check node labels with `kubectl get nodes --show-labels` |
-| Port `2049` blocked | EFS NFS port closed | Add inbound rule for port 2049 in security group |
+| `Pod Unschedulable` | No nodes match affinity | `kubectl get nodes --show-labels` |
+| Port `2049` blocked | EFS NFS port closed | Add inbound rule for port 2049 in SG |
+| Pod evicted under pressure | BestEffort QoS | Set equal `requests == limits` for Guaranteed QoS |
+| Secret not found | Wrong secret name/key | `kubectl get secret <n> -o yaml` |
 
 ---
 
@@ -427,6 +529,17 @@ Storage
  □ EBS dynamic provisioning working
  □ EFS RWX shared across 2 pods
  □ Jenkins persisting data to EFS
+
+Databases & Secrets
+ □ PostgreSQL StatefulSet deployed
+ □ Secret consumed as env vars
+ □ Secret consumed as volume mount
+ □ Guaranteed QoS pod verified
+
+Resource Management
+ □ ResourceQuota applied to namespace
+ □ LimitRange defaults verified
+ □ Pod QoS class confirmed
 
 Workloads
  □ Jenkins Deployment + Service live
@@ -445,7 +558,7 @@ Config
 
 ---
 
-## 🧠 Production Best Practices (Learned the Hard Way)
+## 🧠 Production Best Practices
 
 - 🚫 **Never** run stateful apps as bare Pods — always use Deployments or StatefulSets
 - 💾 **EFS** for shared/Jenkins workloads, **EBS** for databases — never mix them up
@@ -453,6 +566,9 @@ Config
 - 🌐 Use **Ingress + ALB** instead of NodePort for prod HTTP traffic
 - 🎯 Always set **resource requests and limits** — or one noisy pod can starve the node
 - 📋 **Label everything** — nodes, pods, namespaces. Scheduling and debugging depend on it
+- ⚖️ Use **Guaranteed QoS** for critical workloads (databases, Jenkins) — they survive memory pressure
+- 📊 Apply **ResourceQuotas per namespace** in multi-team clusters to prevent resource monopolization
+- 🔒 Never hardcode secrets in YAML — use Kubernetes Secrets or AWS Secrets Manager
 
 ---
 
