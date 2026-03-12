@@ -1,0 +1,283 @@
+Goal of this demo
+You will clearly see:
+1.	Pod starts with small requests
+2.	VPA observes high CPU usage
+3.	VPA recommendation increases
+4.	VPA evicts old pod
+5.	New pod is created with bigger requests
+👉 That’s the whole VPA lifecycle.
+________________________________________
+Best simple setup (recommended)
+We’ll use:
+•	Deployment with 1 replica (easy to understand)
+•	VPA with updateMode: Auto
+•	controlledValues: RequestsOnly (VERY important — safer and less confusing)
+•	CPU stress loop in busybox
+________________________________________
+First clean up your current hamster setup
+Since you currently have 2 pods and VPA is actively rotating them, let’s reset.
+Step 1: Delete current resources
+Run:
+kubectl delete vpa hamster-vpa
+kubectl delete deployment hamster
+Wait a few seconds, then verify:
+kubectl get pods
+kubectl get vpa
+You should see no hamster pods and no hamster-vpa.
+________________________________________
+Step 2: Create a simple Deployment (small requests)
+Create file:
+vi hamster-deployment.yaml
+Paste this:
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hamster
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hamster
+  template:
+    metadata:
+      labels:
+        app: hamster
+    spec:
+      containers:
+      - name: hamster
+        image: busybox
+        command: ["/bin/sh", "-c"]
+        args:
+          - while true; do timeout 0.5s yes > /dev/null; sleep 0.5s; done
+        resources:
+          requests:
+            cpu: 100m
+            memory: 50Mi
+          limits:
+            cpu: 500m
+            memory: 500Mi
+Apply it:
+kubectl apply -f hamster-deployment.yaml
+Check pod:
+kubectl get pods -owide
+________________________________________
+Step 3: Create a clean VPA (RequestsOnly)
+Create file:
+vi hamster-vpa.yaml
+Paste this:
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: hamster-vpa
+spec:
+  targetRef:
+    apiVersion: "apps/v1"
+    kind: Deployment
+    name: hamster
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: hamster
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsOnly
+      minAllowed:
+        cpu: 100m
+        memory: 50Mi
+      maxAllowed:
+        cpu: 1
+        memory: 1Gi
+Apply it:
+kubectl apply -f hamster-vpa.yaml
+________________________________________
+Step 4: Watch VPA recommendation appear
+Now check every 20–30 seconds:
+kubectl get vpa
+At first, it may show low or empty values.
+After some time, you should see something like:
+NAME          MODE   CPU    MEM     PROVIDED   AGE
+hamster-vpa   Auto   350m   250Mi   True       3m
+Meaning:
+•	VPA has enough data
+•	it recommends:
+o	CPU request → 350m
+o	Memory request → 250Mi
+________________________________________
+Step 5: Confirm current pod still has old requests
+Get pod name:
+kubectl get pods
+Then:
+kubectl describe pod <pod-name>
+You should still see:
+•	Requests:
+o	CPU 100m
+o	Memory 50Mi
+At this moment:
+✅ VPA has recommendation
+❌ Running pod is still old
+This is the key lesson.
+________________________________________
+Step 6: Watch VPA replace the pod
+Now continuously watch pods:
+kubectl get pods -w
+What you’ll eventually see:
+•	old pod becomes Terminating
+•	new pod appears with a different name
+Example:
+hamster-xxxxx-old   1/1 Running
+hamster-xxxxx-old   1/1 Terminating
+hamster-xxxxx-new   0/1 ContainerCreating
+hamster-xxxxx-new   1/1 Running
+👉 This is VPA updater evicting the pod.
+Press Ctrl + C after new pod is Running.
+________________________________________
+Step 7: Verify the reason (most important)
+Describe the old pod (if it still exists briefly in terminating state), or check events:
+kubectl describe pod <old-pod-name>
+You should see:
+EvictedByVPA
+Pod was evicted by VPA Updater to apply resource recommendation.
+This is the best proof.
+________________________________________
+Step 8: Check the new pod resources
+Describe the new pod:
+kubectl describe pod <new-pod-name>
+Now you should see something like:
+Requests
+•	CPU: 350m (or whatever VPA recommends)
+•	Memory: 250Mi
+Limits
+Because we used:
+controlledValues: RequestsOnly
+the limits should stay as originally defined:
+•	CPU: 500m
+•	Memory: 500Mi
+👉 This is the cleanest and easiest demo.
+________________________________________
+What you should understand after this demo
+Before VPA acts
+•	Pod starts with:
+o	requests = 100m / 50Mi
+o	limits = 500m / 500Mi
+VPA observes usage
+•	busybox loop uses more CPU than requested
+VPA recommends bigger request
+•	maybe 350m / 250Mi
+VPA does NOT edit running pod
+•	old pod remains unchanged
+VPA evicts old pod
+•	old pod terminates
+Deployment creates replacement pod
+•	new pod starts
+Admission webhook injects new request
+•	new pod now has:
+o	requests = 350m / 250Mi
+o	limits still 500m / 500Mi
+________________________________________
+Super simple “what to run in order”
+If you want the minimum command list, run exactly this:
+1) Cleanup
+kubectl delete vpa hamster-vpa --ignore-not-found
+kubectl delete deployment hamster --ignore-not-found
+2) Create deployment
+kubectl apply -f hamster-deployment.yaml
+3) Create VPA
+kubectl apply -f hamster-vpa.yaml
+4) Watch recommendation
+watch kubectl get vpa
+(Press Ctrl+C once PROVIDED=True and CPU/MEM values appear)
+5) Check current pod
+kubectl get pods
+kubectl describe pod <pod-name>
+6) Watch replacement
+kubectl get pods -w
+7) Check new pod
+kubectl describe pod <new-pod-name>
+________________________________________
+Even simpler: how to “read” the output
+If you see this:
+kubectl get vpa
+hamster-vpa   Auto   587m   250Mi   True
+It means:
+•	recommended requests:
+o	CPU = 587m
+o	Memory = 250Mi
+________________________________________
+If you see this in pod:
+Requests:
+  cpu: 100m
+  memory: 50Mi
+It means:
+•	pod is still old
+•	VPA recommendation exists, but not applied yet
+________________________________________
+If you see this:
+EvictedByVPA
+Pod was evicted by VPA Updater to apply resource recommendation.
+It means:
+•	VPA updater deleted old pod on purpose
+________________________________________
+If new pod shows:
+Requests:
+  cpu: 587m
+  memory: 250Mi
+It means:
+•	VPA successfully applied recommendation to new pod
+________________________________________
+Important note for your current cluster
+Because you currently still have:
+•	hamster-6sxlx
+•	hamster-6wdd5
+VPA may continue to rotate them while recommendation changes.
+So for learning, it’s MUCH better to:
+•	delete everything
+•	recreate fresh
+•	use 1 replica
+•	use RequestsOnly
+That removes the confusing repeated evictions.
+________________________________________
+Best beginner version (if you want NO auto-evictions)
+If you want to understand recommendation first without pod replacement happening automatically, use:
+updateMode: "Initial"
+Then behavior becomes:
+•	VPA recommends
+•	existing pod is NOT evicted
+•	only newly created pods get updated requests
+This is even easier for first learning.
+Great learning path:
+1.	First test with Initial
+2.	Then switch to Auto
+________________________________________
+My recommended learning order (best)
+Round 1 — Understand recommendation only
+Use:
+updateMode: "Initial"
+You learn:
+•	VPA computes recommendations
+•	current pod doesn’t change
+•	manual restart creates new pod with updated request
+________________________________________
+Round 2 — Understand automatic replacement
+Change to:
+updateMode: "Auto"
+You learn:
+•	VPA updater evicts old pod automatically
+•	replacement pod gets new request
+________________________________________
+If you want the cleanest learning demo RIGHT NOW
+I strongly recommend this exact version:
+Deployment
+•	1 replica
+•	request small (100m)
+•	limit fixed (500m)
+VPA
+•	updateMode: Initial first
+•	controlledValues: RequestsOnly
+Then once you understand it:
+•	change Initial → Auto
+________________________________________
+Best final takeaway
+VPA learning in one sentence:
+VPA watches real usage, recommends better requests, and applies them only when a pod is created (or evicted and recreated in Auto mode).
+That’s the whole story.
+
