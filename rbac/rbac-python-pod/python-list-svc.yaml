@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: python-svc-reader
+  namespace: default
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: service-reader-clusterrole
+rules:
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: service-reader-binding
+subjects:
+- kind: ServiceAccount
+  name: python-svc-reader
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: service-reader-clusterrole
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: python-list-services
+  namespace: default
+spec:
+  serviceAccountName: python-svc-reader
+  restartPolicy: Never
+  containers:
+  - name: python
+    image: python:3.11-slim
+    command: ["/bin/sh", "-c"]
+    args:
+      - |
+        pip install kubernetes && python - <<'EOF'
+        from kubernetes import client, config
+
+        # Load in-cluster config
+        config.load_incluster_config()
+
+        v1 = client.CoreV1Api()
+
+        print("Listing all services in all namespaces:\n")
+        services = v1.list_service_for_all_namespaces()
+
+        for svc in services.items:
+            print(f"Namespace: {svc.metadata.namespace}, Service: {svc.metadata.name}, Type: {svc.spec.type}, ClusterIP: {svc.spec.cluster_ip}")
+        EOF
