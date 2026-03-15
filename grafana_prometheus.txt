@@ -1,0 +1,59 @@
+🏗️ PART 1 — Install Helm (if not already installed)
+
+helm version
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+helm version
+
+🏗️ PART 2 — Add Prometheus/Grafana Helm repo
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+
+🏗️ PART 3 — Create monitoring namespace
+kubectl create namespace monitoring
+
+Verify:
+
+kubectl get ns
+
+🏗️ PART 4 — Install kube-prometheus-stack
+
+This is the easiest complete install.
+
+helm install kube-prom-stack prometheus-community/kube-prometheus-stack \
+  -n monitoring
+
+Wait 2–5 minutes.
+
+Check pods:
+
+kubectl get pods -n monitoring
+
+You should see pods like:
+
+prometheus
+
+grafana
+
+alertmanager
+
+node-exporter
+
+kube-state-metrics
+
+operator
+
+Example expected names:
+
+kubectl get pods -n monitoring -o wide
+
+Look for:
+
+kube-prom-stack-grafana-xxxx
+
+kube-prom-stack-kube-state-metrics-xxxx
+
+kube-prom-stack-operator-xxxx
+
+prometheus-kube-prom-stack-prometheus-0
+
+alertmanager-kube-prom-stack-alertmanager-0
