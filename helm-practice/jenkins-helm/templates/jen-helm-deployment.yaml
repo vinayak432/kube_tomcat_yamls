@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins-helm-deployment
+  namespace: jenkins-helm-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+      - name: jenkins
+        image: jenkins/jenkins:lts
+        ports:
+        - containerPort: 8080
+        - containerPort: 50000
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+        env:
+        - name: JENKINS_OPTS
+          value: "--prefix=/vinayak"
+        volumeMounts:
+        - name: jenkins-ebs
+          mountPath: /var/jenkins_home
+      volumes:
+      - name: jenkins-ebs
+        persistentVolumeClaim:
+          claimName: jen-helm-pvc
